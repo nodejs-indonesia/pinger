@@ -1,7 +1,7 @@
 {
-  "name": "check-connection",
+  "name": "pinger",
   "version": "1.0.0",
-  "description": "",
+  "description": "Ping and say",
   "main": "index.js",
   "scripts": {
     "test": "eslint *.js"
