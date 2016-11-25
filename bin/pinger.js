@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const ping = require('../index');
 const spawn = require('child_process').spawn;
 
