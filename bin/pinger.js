@@ -3,8 +3,11 @@
 const ping = require('../index');
 const spawn = require('child_process').spawn;
 
+const SLA_MESSAGES = ["excellent", "good", "bad"];
+
 let hostname = process.argv[2] || 'google.com';
 let online = false;
+let sla = 0;
 
 /**
  * Get time now as string
@@ -29,6 +32,7 @@ function pad (num, width) {
 }
 
 let queue = [];
+let running = false;
 
 /**
  * Say message with OS text to speech
@@ -39,7 +43,7 @@ let queue = [];
 function say (msg) {
   queue.push(msg);
 
-  if (queue.length > 1) {
+  if (running) {
     return;
   }
 
@@ -55,27 +59,53 @@ function sayFromQueue () {
     return;
   }
 
+  running = true;
+
   msg = queue.shift();
+
   let cmd = spawn('say', [ msg ]);
-  cmd.on('exit', sayFromQueue);
+  cmd.on('exit', () => {
+    running = false;
+    sayFromQueue();
+  });
 }
 
+function getSla (time) {
+  if (time <= 100) {
+    return 1;
+  }
+
+  if (time <= 500) {
+    return 2;
+  }
+
+  return 3;
+}
+
+let errCount = 0;
 /**
  * Main function
  **/
 ping(hostname, (err, data) => {
   if (err) {
-    if (online) {
+    if (sla !== 0) {
+      errCount++;
+      if (errCount < 3) {
+        return;
+      }
+      sla = 0;
       say('Connection down');
-      online = false;
     }
-    console.error(`${now()} ERROR> ${err.message}`);
+    console.error(`${now()} error=${err.message}`);
     return;
   }
 
-  if (!online) {
-    say('Connection up');
-    online = true;
+  errCount = 0;
+
+  let newSla = getSla(data.time);
+  if (newSla !== sla) {
+    sla = newSla;
+    say(`Connection up with service level ${SLA_MESSAGES[sla - 1]}`);
   }
 
   console.log(`${now()} from=${data.ip} ttl=${data.ttl} time=${data.time} ms`);
